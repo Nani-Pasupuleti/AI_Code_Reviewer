@@ -1,5 +1,5 @@
 import os
-import sys  # <--- This is crucial
+import sys
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -28,13 +28,8 @@ def find_suitable_model():
             if 'flash' in model:
                 print(f"Found compatible flash model: {model}")
                 return model
-
-        # 3. Last Resort: Gemini 1.5 Pro
-        for model in all_models:
-            if 'gemini-1.5-pro' in model:
-                print(f"Found fallback model: {model}")
-                return model
         
+        # 3. Last Resort: Pro model
         return 'models/gemini-1.5-flash'
 
     except Exception as e:
@@ -56,8 +51,8 @@ def main():
             print("\nError: Could not find any compatible models for your API key.")
             return
             
-        # 3. Fetch the code (FIXED LOGIC HERE)
-        # If GitHub Actions sends a filename, use it. Otherwise, verify sample_code.py exists.
+        # 3. Fetch the code
+        # If GitHub Actions sends a filename, use it. Otherwise, default to sample_code.py (for local testing)
         if len(sys.argv) > 1:
             file_to_review = sys.argv[1]
         else:
@@ -68,26 +63,24 @@ def main():
         
         if "Error:" in code_to_review:
             print(code_to_review)
-            # We exit with error code 1 so GitHub knows something went wrong
             sys.exit(1) 
 
-        # 4. Get the AI review
-        review_result = review_code(model_name, code_to_review)
+        # 4. Get the AI review (Passing Filename now!)
+        review_result = review_code(model_name, code_to_review, file_to_review)
 
         # 5. Generate and print the report
         final_report = generate_review_report(review_result)
         print(final_report)
 
-        # 6. Fail the pipeline if the score is low (Optional but recommended)
+        # 6. Fail the pipeline if the score is low
         score = review_result.get('score', 0)
-        # Ensure score is an integer before comparing
         try:
             score_int = int(str(score).replace('%', ''))
             if score_int < 70:
                 print("❌ FAILED: Code Quality Score is below 70%.")
-                sys.exit(1) # This turns the GitHub check RED
+                sys.exit(1)
         except:
-            pass # If score isn't a number, ignore this check
+            pass 
 
     except Exception as e:
         print(f"\nAN UNEXPECTED ERROR OCCURRED: {e}")

@@ -2,31 +2,40 @@ import google.generativeai as genai
 import json
 import re
 
-def review_code(model_name, code_content):
+def review_code(model_name, code_content, filename):
     """
     Sends the code to a specified Google Gemini model for a review.
+    Dynamically adapts to the programming language based on filename.
     """
-    print(f"Sending code to Google AI for review using model: {model_name}...")
+    print(f"Sending {filename} to Google AI for review using model: {model_name}...")
     
     prompt = f"""
-    You are an automated AI Code Review Agent. Review the following Python code based on these standards:
-    1.  **Code Formatting:** Proper indentation and spacing.
-    2.  **Naming Conventions:** `snake_case` for variables and functions, `PascalCase` for classes.
-    3.  **Function Comments/Docstrings:** Every function must have a docstring.
-    4.  **Unused Variables:** No unused variables should be present.
-    5.  **Hardcoded Values:** Avoid "magic numbers" or strings.
+    You are an Expert Senior Software Architect and Code Reviewer. 
+    You are reviewing a file named: '{filename}'.
 
-    Calculate a "Code Quality Score" from 100%, deducting points for each violation:
-    - Minor formatting/naming issue: -5 points
-    - Missing docstring: -10 points
-    - Unused variable: -5 points
-    - Hardcoded value: -5 points
+    Your task is to analyze the code below.
+    1. **Detect the Language:** Identify if this is Python, Java, JavaScript (React), SQL, etc.
+    2. **Apply Language-Specific Standards:** 
+       - If Python: Check for PEP 8, snake_case naming.
+       - If Java/C#: Check for camelCase naming, proper class structure.
+       - If JavaScript/React: Check for functional components, hooks usage, const/let variables.
+       - If SQL: Check for capitalization of keywords, injection risks.
+    3. **Analyze for:**
+       - Bugs or Logic Errors.
+       - Security Vulnerabilities (e.g., SQL Injection, Hardcoded Secrets).
+       - Code Cleanliness & Maintainability.
+       - Missing Documentation/Comments.
 
-    Your final output MUST be a raw JSON object with two keys: "suggestions" (a list of comments) and "score" (the final percentage).
+    Calculate a "Code Quality Score" (0-100%).
+    
+    Your output MUST be a raw JSON object with two keys: 
+    - "suggestions": A list of objects, where each has a "comment" field.
+    - "score": The final percentage as a number (integer).
+
     Do not include Markdown formatting like ```json.
 
     Code to review:
-    ```python
+    ```
     {code_content}
     ```
     """
@@ -45,7 +54,7 @@ def review_code(model_name, code_content):
         # Parse JSON
         review_result = json.loads(text_response)
 
-        # Handle case where AI returns a string representation of JSON inside JSON (rare but happens)
+        # Handle double-encoding
         if isinstance(review_result, str):
             review_result = json.loads(review_result)
 
@@ -54,8 +63,7 @@ def review_code(model_name, code_content):
         
     except Exception as e:
         print(f"Error parsing AI response: {e}")
-        # Return a valid structure so the program doesn't crash
         return {
-            "suggestions": [{"comment": f"AI returned invalid format. Error: {e}"}],
+            "suggestions": [{"comment": f"AI returned invalid format or failed: {e}"}],
             "score": 0
         }

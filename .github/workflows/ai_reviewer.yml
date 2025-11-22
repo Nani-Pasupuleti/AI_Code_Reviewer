@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Important: Fetches history so git diff works
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -33,33 +33,37 @@ jobs:
         run: |
           echo "Fetching changed files..."
           
-          # 1. Get the list of changed .py files
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- '*.py')
+          # 1. Get list of changed files
+          # We include extensions for Python, Java, JS, React, TypeScript, SQL, C++, C#, HTML, CSS
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- \
+            '*.py' '*.java' '*.js' '*.jsx' '*.ts' '*.tsx' '*.sql' '*.html' '*.css' '*.cpp' '*.c' '*.cs')
 
-          # 2. Check if any Python files were changed
+          # 2. Check if any supported code files were changed
           if [ -z "$CHANGED_FILES" ]; then
-            echo "No Python files were modified in this push."
+            echo "No supported code files were modified in this push."
             exit 0
           fi
 
-          echo "Found the following changed Python files:"
+          echo "Found the following changed files:"
           echo "$CHANGED_FILES"
           echo "------------------------------------------"
 
           # 3. Loop through each file and run the AI Agent
           has_error=0
           for file in $CHANGED_FILES; do
+            # Check if the file still exists (it might have been deleted in the commit)
             if [ -f "$file" ]; then
               echo ">> Reviewing: $file"
               python main.py "$file"
               
+              # Check if main.py returned an error (exit code 1)
               if [ $? -ne 0 ]; then
                 has_error=1
               fi
             fi
           done
 
-          # 4. Fail the workflow if any file had bad code
+          # 4. Fail the workflow if any file had bad code (Score < 70%)
           if [ $has_error -eq 1 ]; then
             echo "❌ Some files failed the code review."
             exit 1
