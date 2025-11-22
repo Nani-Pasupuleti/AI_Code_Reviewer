@@ -1,0 +1,66 @@
+name: AI Code Reviewer
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  review-code:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run AI Reviewer on Changed Files
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          echo "Fetching changed files..."
+          
+          # 1. Get the list of changed .py files
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- '*.py')
+
+          # 2. Check if any Python files were changed
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No Python files were modified in this push."
+            exit 0
+          fi
+
+          echo "Found the following changed Python files:"
+          echo "$CHANGED_FILES"
+          echo "------------------------------------------"
+
+          # 3. Loop through each file and run the AI Agent
+          has_error=0
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              echo ">> Reviewing: $file"
+              python main.py "$file"
+              
+              if [ $? -ne 0 ]; then
+                has_error=1
+              fi
+            fi
+          done
+
+          # 4. Fail the workflow if any file had bad code
+          if [ $has_error -eq 1 ]; then
+            echo "❌ Some files failed the code review."
+            exit 1
+          fi
