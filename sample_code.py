@@ -48,3 +48,7 @@ def another_function(data):
     if data > SIGNIFICANCE_THRESHOLD:
         # Use the defined constant for the print message
         print(MSG_SIGNIFICANT)
+
+def bad_function():
+    x=5 # Bad spacing and missing docstring
+    print("Done")
