@@ -1,8 +1,7 @@
-# agents/code_reviewer.py
 import google.generativeai as genai
 import json
+import re
 
-# The function now accepts a 'model_name' argument
 def review_code(model_name, code_content):
     """
     Sends the code to a specified Google Gemini model for a review.
@@ -23,7 +22,8 @@ def review_code(model_name, code_content):
     - Unused variable: -5 points
     - Hardcoded value: -5 points
 
-    Your final output MUST be a JSON object with two keys: "suggestions" (a list of comments) and "score" (the final percentage).
+    Your final output MUST be a raw JSON object with two keys: "suggestions" (a list of comments) and "score" (the final percentage).
+    Do not include Markdown formatting like ```json.
 
     Code to review:
     ```python
@@ -32,22 +32,30 @@ def review_code(model_name, code_content):
     """
 
     try:
-        # Use the model name that was passed into the function
         model = genai.GenerativeModel(model_name)
         
-        generation_config = genai.types.GenerationConfig(
-            response_mime_type="application/json"
-        )
+        # Send request
+        response = model.generate_content(prompt)
+        text_response = response.text.strip()
 
-        response = model.generate_content(prompt, generation_config=generation_config)
-        
-        review_result = json.loads(response.text)
+        # CLEANUP: Remove Markdown code blocks if present
+        if text_response.startswith("```"):
+            text_response = re.sub(r"^```(json)?|```$", "", text_response, flags=re.MULTILINE).strip()
+
+        # Parse JSON
+        review_result = json.loads(text_response)
+
+        # Handle case where AI returns a string representation of JSON inside JSON (rare but happens)
+        if isinstance(review_result, str):
+            review_result = json.loads(review_result)
+
         print("AI review received successfully.")
         return review_result
         
     except Exception as e:
-        print(f"Error calling Google AI API: {e}")
+        print(f"Error parsing AI response: {e}")
+        # Return a valid structure so the program doesn't crash
         return {
-            "suggestions": [{"comment": f"An error occurred during AI analysis: {e}"}],
+            "suggestions": [{"comment": f"AI returned invalid format. Error: {e}"}],
             "score": 0
         }

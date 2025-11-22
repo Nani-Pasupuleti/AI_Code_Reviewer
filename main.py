@@ -1,4 +1,3 @@
-# main.py
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -11,33 +10,37 @@ from agents.report_generator import generate_review_report
 
 def find_suitable_model():
     """
-    Lists available Gemini models and prioritizes finding a known free model.
+    Lists available Gemini models and prioritizes finding a known free model (Flash).
     """
     print("Finding a suitable model for your API key...")
     try:
-        # A list of preferred models known to be free
-        preferred_models = [
-            'models/gemini-1.5-flash-latest',
-            'models/gemini-1.0-pro',
-            'models/gemini-pro'
-        ]
+        all_models = [m.name for m in genai.list_models()]
         
-        all_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        # 1. Priority: Look for the standard Flash model (Best for free tier)
+        for model in all_models:
+            if 'gemini-1.5-flash' in model:
+                print(f"Found preferred free model: {model}")
+                return model
 
-        for model_name in preferred_models:
-            if model_name in all_models:
-                print(f"Found preferred free model: {model_name}")
-                return model_name
+        # 2. Fallback: Look for any 'flash' model
+        for model in all_models:
+            if 'flash' in model:
+                print(f"Found compatible flash model: {model}")
+                return model
 
-        # If no preferred models were found, return the first available one as a fallback
-        if all_models:
-            print(f"No preferred models found. Using first available: {all_models[0]}")
-            return all_models[0]
-            
-        return None
+        # 3. Last Resort: Gemini 1.5 Pro
+        for model in all_models:
+            if 'gemini-1.5-pro' in model:
+                print(f"Found fallback model: {model}")
+                return model
+        
+        # If we get here, we hardcode a known working string to avoid grabbing experimental 2.5 models
+        print("Using default fallback string.")
+        return 'models/gemini-1.5-flash'
+
     except Exception as e:
         print(f"Could not list models: {e}")
-        return None
+        return 'models/gemini-1.5-flash'
 
 def main():
     try:
