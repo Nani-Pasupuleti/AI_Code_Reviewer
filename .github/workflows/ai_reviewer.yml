@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Important: Fetches history so git diff works
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -34,11 +34,9 @@ jobs:
           echo "Fetching changed files..."
           
           # 1. Get list of changed files
-          # We include extensions for Python, Java, JS, React, TypeScript, SQL, C++, C#, HTML, CSS
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- \
             '*.py' '*.java' '*.js' '*.jsx' '*.ts' '*.tsx' '*.sql' '*.html' '*.css' '*.cpp' '*.c' '*.cs')
 
-          # 2. Check if any supported code files were changed
           if [ -z "$CHANGED_FILES" ]; then
             echo "No supported code files were modified in this push."
             exit 0
@@ -48,23 +46,29 @@ jobs:
           echo "$CHANGED_FILES"
           echo "------------------------------------------"
 
-          # 3. Loop through each file and run the AI Agent
+          # Initialize error flag to 0 (No errors yet)
           has_error=0
+
+          # 3. Loop through each file
           for file in $CHANGED_FILES; do
-            # Check if the file still exists (it might have been deleted in the commit)
             if [ -f "$file" ]; then
               echo ">> Reviewing: $file"
-              python main.py "$file"
               
-              # Check if main.py returned an error (exit code 1)
-              if [ $? -ne 0 ]; then
-                has_error=1
-              fi
+              # --- THE IMPORTANT FIX ---
+              # "|| has_error=1" means: 
+              # If python main.py fails (exit code 1), DO NOT STOP.
+              # Instead, set has_error to 1 and continue to the next loop.
+              python main.py "$file" || has_error=1
+              
+              echo "------------------------------------------"
+              echo "" # Print a new line for cleaner logs
             fi
           done
 
-          # 4. Fail the workflow if any file had bad code (Score < 70%)
+          # 4. Fail the workflow at the VERY END if any file failed
           if [ $has_error -eq 1 ]; then
             echo "❌ Some files failed the code review."
             exit 1
+          else
+            echo "✅ All files passed the code review!"
           fi
