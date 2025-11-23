@@ -54,9 +54,26 @@ def review_code(model_name, code_content, filename):
         # Parse JSON
         review_result = json.loads(text_response)
 
-        # Handle double-encoding
+        # Handle double-encoding (String inside String)
         if isinstance(review_result, str):
             review_result = json.loads(review_result)
+
+        # --- FIX: HANDLE LISTS VS DICTIONARIES ---
+        if isinstance(review_result, list):
+            print("⚠️ Warning: AI returned a List instead of an Object. Fixing structure...")
+            # If it's a list, we assume it's just a list of suggestions. 
+            # We set a default score of 0 to trigger a failure so you check the report.
+            return {
+                "suggestions": review_result,
+                "score": 0 
+            }
+        
+        # Ensure it is a dictionary before returning
+        if not isinstance(review_result, dict):
+            return {
+                "suggestions": [{"comment": "AI returned invalid JSON format."}],
+                "score": 0
+            }
 
         print("AI review received successfully.")
         return review_result
