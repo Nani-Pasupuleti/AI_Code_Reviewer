@@ -1,9 +1,16 @@
-// Simulating a Junior Developer's Spring Boot code
-public class user_controller {  // Error: Should be PascalCase (UserController)
+/**
+ * Controller class responsible for handling user-related data operations.
+ */
+public class UserController {
 
-    String db_password = "secret_password_123"; // Error: Hardcoded secret
-    
-    public void GetData() { // Error: Method should be camelCase (getData)
-        System.out.println("Connecting to DB with: " + db_password);
+    // Constant for the log message to avoid hardcoded strings inside methods
+    private static final String CONNECTION_MSG = "Initiating secure database connection...";
+
+    /**
+     * Retrieves the required data from the database.
+     */
+    public void getData() {
+        // Log the connection attempt using the constant
+        System.out.println(CONNECTION_MSG);
     }
 }

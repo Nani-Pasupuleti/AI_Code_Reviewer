@@ -1,16 +1,19 @@
-// Simulating a Junior Developer's React code
 import React from 'react';
 
-const login_screen = () => { // Error: Component should be PascalCase (LoginScreen)
-    var user = "admin"; // Error: Use 'const' or 'let', never 'var'
-    
-    console.log("User logging in..."); // Error: No console logs in production
+/**
+ * Functional component that displays the login welcome screen.
+ * 
+ * @returns {JSX.Element} The rendered login screen component.
+ */
+const LoginScreen = () => {
+    // Use const for variables that do not change
+    const defaultUser = "admin";
     
     return (
         <div>
-            <h1>Welcome {user}</h1>
+            <h1>Welcome {defaultUser}</h1>
         </div>
     );
 };
 
-export default login_screen;
+export default LoginScreen;
