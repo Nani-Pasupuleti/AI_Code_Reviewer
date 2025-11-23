@@ -9,34 +9,45 @@ from agents.code_fetcher import fetch_code_from_file
 from agents.code_reviewer import review_code
 from agents.report_generator import generate_review_report
 
+# Constants to avoid "Magic Numbers"
+MIN_PASS_SCORE = 70
+DEFAULT_MODEL_NAME = 'models/gemini-1.5-flash'
+
 def find_suitable_model():
     """
     Lists available Gemini models and prioritizes finding a known free model (Flash).
+    
+    Returns:
+        str: The name of the best available model.
     """
     print("Finding a suitable model for your API key...")
     try:
         all_models = [m.name for m in genai.list_models()]
         
-        # 1. Priority: Look for the standard Flash model
-        for model in all_models:
-            if 'gemini-1.5-flash' in model:
-                print(f"Found preferred free model: {model}")
-                return model
+        # 1. Priority: Look for the standard Flash model (Exact match preferred)
+        target_model = 'models/gemini-1.5-flash'
+        if target_model in all_models:
+            print(f"Found preferred free model: {target_model}")
+            return target_model
 
-        # 2. Fallback: Look for any 'flash' model
+        # 2. Fallback: Look for any 'flash' model using safer checking
         for model in all_models:
-            if 'flash' in model:
+            if 'flash' in model and 'gemini' in model:
                 print(f"Found compatible flash model: {model}")
                 return model
         
-        # 3. Last Resort: Pro model
-        return 'models/gemini-1.5-flash'
+        # 3. Last Resort: Default Flash model
+        return DEFAULT_MODEL_NAME
 
     except Exception as e:
         print(f"Could not list models: {e}")
-        return 'models/gemini-1.5-flash'
+        return DEFAULT_MODEL_NAME
 
 def main():
+    """
+    Main entry point for the AI Code Reviewer.
+    Orchestrates fetching code, sending it to AI, and generating reports.
+    """
     try:
         # 1. Configure the Google AI Client
         google_api_key = os.getenv("GOOGLE_API_KEY")
@@ -51,37 +62,45 @@ def main():
             print("\nError: Could not find any compatible models for your API key.")
             return
             
-        # 3. Fetch the code
+        # 3. Determine the file to review
         if len(sys.argv) > 1:
             file_to_review = sys.argv[1]
         else:
-            file_to_review = "sample_code.py"
+            file_to_review = "main.py" # Review itself if no file provided
 
         print(f"--- Starting Review for: {file_to_review} ---")
-        code_to_review = fetch_code_from_file(file_to_review)
-        
-        # --- BUG FIX HERE ---
-        # Only fail if the content STARTS with "Error:", otherwise it might just be the word "Error" inside the code
-        if code_to_review.startswith("Error:"):
-            print(code_to_review)
-            sys.exit(1) 
 
-        # 4. Get the AI review
+        # 4. Fetch the code (Now handling Exceptions properly)
+        try:
+            code_to_review = fetch_code_from_file(file_to_review)
+        except FileNotFoundError:
+            print(f"Error: The file '{file_to_review}' was not found.")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: An unexpected error occurred while reading file: {e}")
+            sys.exit(1)
+
+        # 5. Get the AI review
         review_result = review_code(model_name, code_to_review, file_to_review)
 
-        # 5. Generate and print the report
+        # 6. Generate and print the report
         final_report = generate_review_report(review_result)
         print(final_report)
 
-        # 6. Fail the pipeline if the score is low
+        # 7. Fail the pipeline if the score is low
         score = review_result.get('score', 0)
+        
+        # Fix: Proper error handling for score conversion
         try:
-            score_int = int(str(score).replace('%', ''))
-            if score_int < 70:
-                print("❌ FAILED: Code Quality Score is below 70%.")
+            score_str = str(score).replace('%', '').strip()
+            score_int = int(score_str)
+            
+            if score_int < MIN_PASS_SCORE:
+                print(f"❌ FAILED: Code Quality Score ({score_int}%) is below {MIN_PASS_SCORE}%.")
                 sys.exit(1)
-        except:
-            pass 
+                
+        except ValueError:
+            print(f"Warning: Could not parse score '{score}'. Skipping threshold check.")
 
     except Exception as e:
         print(f"\nAN UNEXPECTED ERROR OCCURRED: {e}")
