@@ -52,7 +52,6 @@ def main():
             return
             
         # 3. Fetch the code
-        # If GitHub Actions sends a filename, use it. Otherwise, default to sample_code.py (for local testing)
         if len(sys.argv) > 1:
             file_to_review = sys.argv[1]
         else:
@@ -61,11 +60,13 @@ def main():
         print(f"--- Starting Review for: {file_to_review} ---")
         code_to_review = fetch_code_from_file(file_to_review)
         
-        if "Error:" in code_to_review:
+        # --- BUG FIX HERE ---
+        # Only fail if the content STARTS with "Error:", otherwise it might just be the word "Error" inside the code
+        if code_to_review.startswith("Error:"):
             print(code_to_review)
             sys.exit(1) 
 
-        # 4. Get the AI review (Passing Filename now!)
+        # 4. Get the AI review
         review_result = review_code(model_name, code_to_review, file_to_review)
 
         # 5. Generate and print the report
