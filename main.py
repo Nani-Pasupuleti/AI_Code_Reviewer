@@ -3,7 +3,7 @@ import sys
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv() # to load values from .env
 
 from agents.code_fetcher import fetch_code_from_file
 from agents.code_reviewer import review_code
@@ -54,7 +54,7 @@ def main():
         if not google_api_key:
             print("Error: GOOGLE_API_KEY not found in environment variables.")
             return
-        genai.configure(api_key=google_api_key)
+        genai.configure(api_key=google_api_key) # package(google.generativeai)  already contains a method called configure().
 
         # 2. Find a working model dynamically
         model_name = find_suitable_model()
@@ -64,7 +64,7 @@ def main():
             
         # 3. Determine the file to review
         if len(sys.argv) > 1:
-            file_to_review = sys.argv[1]
+            file_to_review = sys.argv[1] # command-line arguments
         else:
             file_to_review = "main.py" # Review itself if no file provided
 
