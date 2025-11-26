@@ -34,8 +34,10 @@ jobs:
           echo "Fetching changed files..."
           
           # 1. Get list of changed files
+          # IMPORTANT: We use ':(exclude)' to ignore the bot's own code
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- \
-            '*.py' '*.java' '*.js' '*.jsx' '*.ts' '*.tsx' '*.sql' '*.html' '*.css' '*.cpp' '*.c' '*.cs')
+            '*.py' '*.java' '*.js' '*.jsx' '*.ts' '*.tsx' '*.sql' \
+            ':(exclude)main.py' ':(exclude)agents/*' ':(exclude)requirements.txt')
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No supported code files were modified in this push."
@@ -46,26 +48,19 @@ jobs:
           echo "$CHANGED_FILES"
           echo "------------------------------------------"
 
-          # Initialize error flag to 0 (No errors yet)
           has_error=0
 
           # 3. Loop through each file
           for file in $CHANGED_FILES; do
             if [ -f "$file" ]; then
               echo ">> Reviewing: $file"
-              
-              # --- THE IMPORTANT FIX ---
-              # "|| has_error=1" means: 
-              # If python main.py fails (exit code 1), DO NOT STOP.
-              # Instead, set has_error to 1 and continue to the next loop.
               python main.py "$file" || has_error=1
-              
               echo "------------------------------------------"
-              echo "" # Print a new line for cleaner logs
+              echo "" 
             fi
           done
 
-          # 4. Fail the workflow at the VERY END if any file failed
+          # 4. Fail the workflow if any file failed
           if [ $has_error -eq 1 ]; then
             echo "❌ Some files failed the code review."
             exit 1
